@@ -1,0 +1,17 @@
+archivesBaseName = 'jagnet-proxy-server'
+
+apply plugin: 'application'
+mainClassName = 'org.gillius.jagnet.proxy.server.ProxyServer'
+
+ext {
+	pomInfo = [
+			name: 'jagnet proxy server',
+			description: 'Proxy server to proxy connections based on tag'
+	]
+}
+
+dependencies {
+	compile project(':jagnet-core')
+
+	runtime 'org.slf4j:slf4j-simple:1.7.21'
+}

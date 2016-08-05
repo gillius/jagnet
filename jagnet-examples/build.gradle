@@ -1,0 +1,35 @@
+archivesBaseName = 'jagnet-examples'
+
+apply plugin: 'application'
+mainClassName = 'org.gillius.jagnet.examples.BallAndPaddleGame'
+
+ext {
+	pomInfo = [
+			name: 'jagnet examples',
+			description: 'Examples using the jagnet engine'
+	]
+}
+
+dependencies {
+	compile project(':jagnet-core')
+	compile 'org.gillius:jalleg-framework:0.1'
+	runtime 'org.gillius:jalleg-rt-win32-x86-64:0.1'
+
+	runtime 'org.slf4j:slf4j-simple:1.7.21'
+}
+
+task runServer(type: JavaExec) {
+	classpath = sourceSets.main.runtimeClasspath
+
+	main = mainClassName
+
+	args = ['server', '56238']
+}
+
+task runClient(type: JavaExec) {
+	classpath = sourceSets.main.runtimeClasspath
+
+	main = mainClassName
+
+	args = ['client', '56238', 'localhost']
+}

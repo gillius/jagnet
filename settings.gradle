@@ -1,0 +1,1 @@
+include 'jagnet-core', 'jagnet-examples', 'jagnet-proxy-server'
