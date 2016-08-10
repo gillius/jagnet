@@ -9,20 +9,17 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import org.gillius.jagnet.Connection;
-import org.gillius.jagnet.ConnectionListener;
-import org.gillius.jagnet.NoopConnectionListener;
-import org.gillius.jagnet.Server;
+import org.gillius.jagnet.*;
 
 import java.util.NoSuchElementException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.LinkedBlockingQueue;
 
 public class NettyServer implements Server {
 	private int port = -1;
 	private final KryoBuilder kryoBuilder = new KryoBuilder();
+	private AcceptPolicy acceptPolicy = AcceptAllPolicy.INSTANCE;
 	private ConnectionListener listener = NoopConnectionListener.INSTANCE;
 
 	private final BlockingQueue<CompletableFuture<Connection>> unconnectedSlots;
@@ -70,6 +67,16 @@ public class NettyServer implements Server {
 		kryoBuilder.registerMessages(messageTypes);
 	}
 
+	public AcceptPolicy getAcceptPolicy() {
+		return acceptPolicy;
+	}
+
+	public void setAcceptPolicy(AcceptPolicy acceptPolicy) {
+		if (acceptPolicy == null)
+			acceptPolicy = AcceptAllPolicy.INSTANCE;
+		this.acceptPolicy = acceptPolicy;
+	}
+
 	@Override
 	public void setListener(ConnectionListener listener) {
 		this.listener = listener;
@@ -85,7 +92,7 @@ public class NettyServer implements Server {
 		 .childHandler(new ChannelInitializer<SocketChannel>() {
 			 @Override
 			 public void initChannel(SocketChannel ch) throws Exception {
-				 if (!listener.acceptingConnection(ch.remoteAddress())) {
+				 if (!acceptPolicy.acceptingConnection(ch.remoteAddress())) {
 					 ch.close();
 					 return;
 				 }
