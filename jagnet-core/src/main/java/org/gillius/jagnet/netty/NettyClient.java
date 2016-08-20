@@ -90,6 +90,7 @@ public class NettyClient implements Client {
 						   p.remove(LineBasedFrameDecoder.class);
 						   p.remove(ProxyClientHandler.class);
 						   setupPipeline(ch);
+						   ch.pipeline().fireChannelActive();
 					   }));
 				 } else {
 					 setupPipeline(ch);
