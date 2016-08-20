@@ -2,26 +2,34 @@ package org.gillius.jagnet;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class DeferredConnectionListener extends DelegatingConnectionListener implements Runnable {
-	private ConcurrentLinkedQueue<Runnable> deferred = new ConcurrentLinkedQueue<>();
+public class DeferredConnectionListener implements ConnectionListener, Runnable {
+	private final ConnectionListener delegate;
+	private final ConcurrentLinkedQueue<Runnable> deferred = new ConcurrentLinkedQueue<>();
 
 	public DeferredConnectionListener(ConnectionListener delegate) {
-		super(delegate);
+		this.delegate = delegate;
+	}
+
+	public DeferredConnectionListener(ConnectionListener... chain) {
+		delegate = ConnectionListenerChain.of(chain);
 	}
 
 	@Override
-	public void onConnected(Connection connection) {
-		deferred.add( () -> super.onConnected(connection));
+	public void onConnected(ConnectionListenerContext ctx) {
+		ConnectionListenerContext deferredContext = new SingleConnectionListenerContext(ctx.getConnection());
+		deferred.add( () -> delegate.onConnected(deferredContext));
 	}
 
 	@Override
-	public void onDisconnected(Connection connection) {
-		deferred.add( () -> super.onDisconnected(connection));
+	public void onDisconnected(ConnectionListenerContext ctx) {
+		ConnectionListenerContext deferredContext = new SingleConnectionListenerContext(ctx.getConnection());
+		deferred.add( () -> delegate.onDisconnected(deferredContext));
 	}
 
 	@Override
-	public void onReceive(Connection connection, Object message) {
-		deferred.add( () -> super.onReceive(connection, message));
+	public void onReceive(ConnectionListenerContext ctx, Object message) {
+		ConnectionListenerContext deferredContext = new SingleConnectionListenerContext(ctx.getConnection());
+		deferred.add( () -> delegate.onReceive(deferredContext, message));
 	}
 
 	@Override

@@ -1,9 +1,9 @@
 package org.gillius.jagnet;
 
 public interface ConnectionListener {
-	default void onConnected(Connection connection) {}
+	default void onConnected(ConnectionListenerContext ctx) {}
 
-	default void onDisconnected(Connection connection) {}
+	default void onDisconnected(ConnectionListenerContext ctx) {}
 
-	default void onReceive(Connection connection, Object message) {}
+	default void onReceive(ConnectionListenerContext ctx, Object message) {}
 }

@@ -1,20 +1,15 @@
 package org.gillius.jagnet;
 
-public class ObjectManagerConnectionListener extends DelegatingConnectionListener {
+public class ObjectManagerConnectionListener implements ConnectionListener {
 	private final ObjectManager manager;
 
 	public ObjectManagerConnectionListener(ObjectManager manager) {
 		this.manager = manager;
 	}
 
-	public ObjectManagerConnectionListener(ConnectionListener delegate, ObjectManager manager) {
-		super(delegate);
-		this.manager = manager;
-	}
-
 	@Override
-	public void onReceive(Connection connection, Object message) {
-		if (!manager.handleMessage(message))
-			super.onReceive(connection, message);
+	public void onReceive(ConnectionListenerContext ctx, Object message) {
+		if (manager.handleMessage(message))
+			ctx.consumeCurrentEvent();
 	}
 }

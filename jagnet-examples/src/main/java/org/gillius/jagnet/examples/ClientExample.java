@@ -23,14 +23,14 @@ public class ClientExample {
 
 		ConnectionListener listener = new ConnectionListener() {
 			@Override
-			public void onReceive(Connection connection, Object message) {
+			public void onReceive(ConnectionListenerContext ctx, Object message) {
 				if (message instanceof TimeSyncResponse) {
 					TimeSyncResponse response = (TimeSyncResponse) message;
 					sync.receive(response);
 					log.info("RTT: {}", sync.getRtt());
 					log.info("Offset: {}", sync.getTimeOffset());
 					if (count.incrementAndGet() < 3)
-						sync.send(connection);
+						sync.send(ctx.getConnection());
 					else
 						timeSynced.complete(null);
 				}

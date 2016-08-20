@@ -28,10 +28,8 @@ public class ServerExample {
 
 		objectManager.registerObject(1, new ChatMessage("Server", "original"));
 
-		remote.setListener(
-				new StandardConnectionListener(
-						new ObjectManagerConnectionListener(objectManager)));
-
+		remote.setListener(ConnectionListenerChain.of(new StandardConnectionListener(),
+		                                              new ObjectManagerConnectionListener(objectManager)));
 		remote.start();
 	}
 }

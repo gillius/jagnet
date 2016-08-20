@@ -241,7 +241,9 @@ public class BallAndPaddleGame extends Game {
 				NettyServer server = new NettyServer(1);
 				server.registerMessages(messages);
 				server.setPort(port);
-				server.setListener(new StandardConnectionListener(deferred));
+				server.setListener(
+						ConnectionListenerChain.of(new StandardConnectionListener(),
+						                           deferred));
 				server.start();
 				log.info("Started server on port {}. Waiting for clients to join.", port);
 				connection = server.getConnection().get();
@@ -258,7 +260,9 @@ public class BallAndPaddleGame extends Game {
 					log.info("Proxy tag: {}", proxyTag);
 				}
 
-				client.setListener(new StandardConnectionListener(deferred));
+				client.setListener(
+						ConnectionListenerChain.of(new StandardConnectionListener(),
+						                           deferred));
 
 				log.info("Client connecting to {}:{}", host, port);
 				client.start();
