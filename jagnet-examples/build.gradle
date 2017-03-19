@@ -13,7 +13,7 @@ ext {
 dependencies {
 	compile project(':jagnet-core')
 	compile 'org.gillius:jalleg-framework:0.1'
-	runtime 'org.gillius:jalleg-rt-win32-x86-64:0.1'
+	runtime 'org.gillius:jalleg-rt-win32-x86-64:5.2.1'
 
 	runtime 'org.slf4j:slf4j-simple:1.7.21'
 }
