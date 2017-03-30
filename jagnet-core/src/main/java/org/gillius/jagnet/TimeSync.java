@@ -7,11 +7,18 @@ public class TimeSync {
 	private long rtt;
 	private long timeOffset;
 
-	public void send(Connection conn) {
+	/**
+	 * Returns a message to be sent, which should be sent immediately as the send time is tracked.
+	 */
+	public TimeSyncRequest send() {
 		TimeSyncRequest request = TimeSyncRequest.getNextRequest();
 		requestId = request.requestId;
 		sendTime = System.nanoTime();
-		conn.sendFast(request);
+		return request;
+	}
+
+	public void send(Connection conn) {
+		conn.sendFast(send());
 	}
 
 	public static void receiveRequestAndRespond(Connection connection, TimeSyncRequest request) {

@@ -18,30 +18,20 @@ public class ClientExample {
 //		client.setProxyTag("thetag");
 
 		TimeSync sync = new TimeSync();
-		AtomicInteger count = new AtomicInteger(0);
-		CompletableFuture<Object> timeSynced = new CompletableFuture<>();
 
-		ConnectionListener listener = new ConnectionListener() {
-			@Override
-			public void onReceive(ConnectionListenerContext ctx, Object message) {
-				if (message instanceof TimeSyncResponse) {
-					TimeSyncResponse response = (TimeSyncResponse) message;
-					sync.receive(response);
-					log.info("RTT: {}", sync.getRtt());
-					log.info("Offset: {}", sync.getTimeOffset());
-					if (count.incrementAndGet() < 3)
-						sync.send(ctx.getConnection());
-					else
-						timeSynced.complete(null);
-				}
-			}
-		};
+		ConditionConnectionListener listener = new ConditionConnectionListener();
 		client.setListener(listener);
 
 		client.start();
 		Connection conn = client.getConnection().get();
-		sync.send(conn);
-		timeSynced.get();
+
+		for (int i=0; i<3; ++i) {
+			//TODO: currently we "sendReliable" but the standard listener always replies with "sendFast"
+			TimeSyncResponse response = listener.sendReliableAndReceive(sync.send(), TimeSyncResponse.class).join();
+			sync.receive(response);
+			log.info("RTT: {}", sync.getRtt());
+			log.info("Offset: {}", sync.getTimeOffset());
+		}
 		conn.sendReliable(new ChatMessage("Jason", "Hello"));
 		conn.sendReliable(new ObjectCreateMessage<>(0, new ChatMessage("Object", "Create")));
 		conn.sendReliable(new ObjectUpdateMessage<>(1, new ChatMessage("Object", "Create")));
