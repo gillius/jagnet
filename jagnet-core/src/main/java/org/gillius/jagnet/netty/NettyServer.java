@@ -139,8 +139,14 @@ public class NettyServer implements Server {
 			}
 			allChannels = null;
 		}
-		if (group != null)
+		if (group != null) {
 			group.shutdownGracefully();
+			try {
+				group.terminationFuture().sync();
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+		}
 		group = null;
 	}
 
