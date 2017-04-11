@@ -3,7 +3,9 @@ package org.gillius.jagnet.netty;
 import io.netty.channel.Channel;
 import org.gillius.jagnet.Connection;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 public class NettyConnection implements Connection {
 	private final Channel channel;
@@ -48,5 +50,15 @@ public class NettyConnection implements Connection {
 	@Override
 	public CompletableFuture<Connection> getCloseFuture() {
 		return closeFuture;
+	}
+
+	@Override
+	public void execute(Runnable task) {
+		channel.eventLoop().execute(task);
+	}
+
+	@Override
+	public <T> Future<T> submit(Callable<T> task) {
+		return channel.eventLoop().submit(task);
 	}
 }

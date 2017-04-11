@@ -1,6 +1,8 @@
 package org.gillius.jagnet;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
@@ -11,20 +13,19 @@ import java.util.function.BiPredicate;
  * {@link CompletableFuture}. This listener can be registered on a single connection at a time only.
  */
 public class ConditionConnectionListener implements ConnectionListener {
-	private final ConcurrentLinkedQueue<Condition> conditions = new ConcurrentLinkedQueue<>();
+	private final List<Condition> conditions = new ArrayList<>();
 
-	private AtomicReference<Connection> connection = new AtomicReference<>(null);
+	private Connection connection;
 
 	@Override
 	public void onConnected(ConnectionListenerContext ctx) {
-		if (!connection.compareAndSet(null, ctx.getConnection()))
-			throw new IllegalStateException(this + " used to listen to more than one connection");
+		if (connection != null)
+			throw new IllegalStateException(this + " cannot be used to listen to more than one connection");
+		connection = ctx.getConnection();
 	}
 
 	@Override
 	public void onDisconnected(ConnectionListenerContext ctx) {
-		connection.set(null);
-		//TODO: handle registrations during and after disconnect
 		for (Condition condition : conditions) {
 			condition.future.completeExceptionally(new DisconnectException());
 		}
@@ -47,23 +48,29 @@ public class ConditionConnectionListener implements ConnectionListener {
 	}
 
 	public CompletableFuture<Object> sendReliableAndReceive(Object message, BiPredicate<ConnectionListenerContext, Object> predicate) {
-		Connection conn = connection.get();
-		if (conn == null)
-			throw new IllegalStateException("Connection not open");
+		CompletableFuture<Object> future = new CompletableFuture<>();
 
-		Condition cond = new Condition(predicate);
-		conditions.add(cond);
-		conn.sendReliable(message);
-		return cond.future;
+		if (connection == null) {
+			future.completeExceptionally(new DisconnectException());
+		} else {
+			connection.execute(() -> {
+				Condition cond = new Condition(predicate, future);
+				conditions.add(cond);
+				connection.sendReliable(message);
+			});
+		}
+
+		return future;
 	}
 
 	private static class Condition {
 		//TODO: some kind of "timeout"
 		public final BiPredicate<ConnectionListenerContext, Object> predicate;
-		public final CompletableFuture<Object> future = new CompletableFuture<>();
+		public final CompletableFuture<Object> future;
 
-		public Condition(BiPredicate<ConnectionListenerContext, Object> predicate) {
+		public Condition(BiPredicate<ConnectionListenerContext, Object> predicate, CompletableFuture<Object> future) {
 			this.predicate = predicate;
+			this.future = future;
 		}
 	}
 }
