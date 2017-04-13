@@ -15,12 +15,13 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
 public class NettyServer implements Server {
 	private int port = -1;
 	private final KryoBuilder kryoBuilder = new KryoBuilder();
 	private AcceptPolicy acceptPolicy = AcceptAllPolicy.INSTANCE;
-	private ConnectionListener listener = NoopConnectionListener.INSTANCE;
+	private Function<NewConnectionContext, ConnectionListener> listenerFactory = null;
 
 	private final BlockingQueue<CompletableFuture<Connection>> unconnectedSlots;
 	private final BlockingQueue<CompletableFuture<Connection>> slots;
@@ -67,6 +68,11 @@ public class NettyServer implements Server {
 		kryoBuilder.registerMessages(messageTypes);
 	}
 
+	@Override
+	public void setListenerFactory(Function<NewConnectionContext, ConnectionListener> factory) {
+		this.listenerFactory = factory;
+	}
+
 	public AcceptPolicy getAcceptPolicy() {
 		return acceptPolicy;
 	}
@@ -78,12 +84,12 @@ public class NettyServer implements Server {
 	}
 
 	@Override
-	public void setListener(ConnectionListener listener) {
-		this.listener = listener;
-	}
-
-	@Override
 	public void start() {
+		if (listenerFactory == null)
+			throw new IllegalStateException("listenerFactory not initialized");
+		if (port < 0)
+			throw new IllegalStateException("port not initialized");
+
 		group = new NioEventLoopGroup(1);
 		allChannels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 		ServerBootstrap b = new ServerBootstrap();
@@ -92,7 +98,7 @@ public class NettyServer implements Server {
 		 .childHandler(new ChannelInitializer<SocketChannel>() {
 			 @Override
 			 public void initChannel(SocketChannel ch) throws Exception {
-				 if (!acceptPolicy.acceptingConnection(ch.remoteAddress())) {
+				 if (!acceptPolicy.acceptingConnection(new NettyNewConnectionContext(ch))) {
 					 ch.close();
 					 return;
 				 }
@@ -163,7 +169,6 @@ public class NettyServer implements Server {
 		         .addLast(new LengthFieldBasedFrameDecoder(65535, 0, 2, 0, 2))
 		         .addLast(new KryoDecoder(kryoBuilder.get()))
 		         .addLast(new KryoEncoder(kryoBuilder.get()))
-		         //TODO: setListener after opening connection?
-		         .addLast(new NettyHandler(new NettyConnection(ch), listener, connFuture));
+		         .addLast(new NettyHandler(new NettyConnection(ch), listenerFactory.apply(new NettyNewConnectionContext(ch)), connFuture));
 	}
 }

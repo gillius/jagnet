@@ -64,7 +64,6 @@ public class NettyClient implements Client {
 		this.host = host;
 	}
 
-	@Override
 	public void setListener(ConnectionListener listener) {
 		this.listener = listener;
 	}
