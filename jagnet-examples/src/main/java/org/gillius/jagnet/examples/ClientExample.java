@@ -37,5 +37,6 @@ public class ClientExample {
 		conn.sendReliable(new ObjectUpdateMessage<>(1, new ChatMessage("Object", "Create")));
 
 		conn.close();
+		conn.getCloseFuture().join(); //wait for the connection to actually close
 	}
 }

@@ -11,9 +11,16 @@ public interface Connection extends AutoCloseable {
 
 	boolean isOpen();
 
+	/**
+	 * Request that the connection shut down. This does not actually block until the connection is closed, use
+	 * {@link #getCloseFuture()} to determine that.
+	 */
 	@Override
 	void close();
 
+	/**
+	 * Returns a future completed when the connection closes.
+	 */
 	CompletableFuture<Connection> getCloseFuture();
 
 	/**
