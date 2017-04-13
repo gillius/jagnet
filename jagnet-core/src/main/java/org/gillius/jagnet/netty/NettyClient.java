@@ -72,6 +72,8 @@ public class NettyClient implements Client {
 
 	@Override
 	public void start() {
+		//TODO: prevent starting more than once (race conditions on close/failure)
+
 		group = new NioEventLoopGroup();
 		Bootstrap b = new Bootstrap();
 		b.group(group)
@@ -101,8 +103,10 @@ public class NettyClient implements Client {
 
 		// Start the client.
 		b.connect(host, port).addListener(future -> {
-			if (!future.isSuccess())
+			if (!future.isSuccess()) {
 				connFuture.completeExceptionally(future.cause());
+				close();
+			}
 		});
 	}
 
