@@ -7,6 +7,8 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LineBasedFrameDecoder;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
 import org.gillius.jagnet.Client;
 import org.gillius.jagnet.Connection;
 import org.gillius.jagnet.ConnectionListener;
@@ -27,7 +29,7 @@ public class NettyClient implements Client {
 	private ConnectionListener listener = NoopConnectionListener.INSTANCE;
 
 	private NettyConnection connection;
-	private CompletableFuture<Connection> connFuture = new CompletableFuture<>();
+	private final CompletableFuture<Connection> connFuture = new CompletableFuture<>();
 	private EventLoopGroup group;
 
 	@Override
@@ -98,7 +100,10 @@ public class NettyClient implements Client {
 		 });
 
 		// Start the client.
-		b.connect(host, port);
+		b.connect(host, port).addListener(future -> {
+			if (!future.isSuccess())
+				connFuture.completeExceptionally(future.cause());
+		});
 	}
 
 	@Override
