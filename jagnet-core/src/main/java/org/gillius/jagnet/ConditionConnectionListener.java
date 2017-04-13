@@ -53,8 +53,8 @@ public class ConditionConnectionListener implements ConnectionListener {
 		if (connection == null) {
 			future.completeExceptionally(new DisconnectException());
 		} else {
+			Condition cond = new Condition(predicate, future);
 			connection.execute(() -> {
-				Condition cond = new Condition(predicate, future);
 				conditions.add(cond);
 				connection.sendReliable(message);
 			});
