@@ -111,22 +111,13 @@ public class NettyServer implements Server {
 	@Override
 	public void close() {
 		if (allChannels != null) {
-			try {
-				allChannels.close().await();
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
+			allChannels.close();
 			allChannels = null;
 		}
 		if (group != null) {
 			group.shutdownGracefully();
-			try {
-				group.terminationFuture().sync();
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
+			group = null;
 		}
-		group = null;
 	}
 
 	protected void setupPipeline(SocketChannel ch) {
