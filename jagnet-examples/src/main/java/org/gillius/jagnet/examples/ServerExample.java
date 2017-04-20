@@ -1,7 +1,6 @@
 package org.gillius.jagnet.examples;
 
 import org.gillius.jagnet.*;
-import org.gillius.jagnet.netty.NettyClient;
 import org.gillius.jagnet.netty.NettyServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +15,18 @@ public class ServerExample {
 //		remote.setHost("localhost");
 //		remote.setPort(8000);
 //		remote.setProxyTag("thetag");
+
+		remote.setConnectionStateListener(new ConnectionStateListener() {
+			@Override
+			public void onConnected(ConnectionListenerContext ctx) {
+				log.info("Received connection from " + ctx.getConnection().getRemoteAddress());
+			}
+
+			@Override
+			public void onDisconnected(ConnectionListenerContext ctx) {
+				log.info("Disconnect from " + ctx.getConnection().getRemoteAddress());
+			}
+		});
 
 		KryoCopier copier = new KryoCopier().register(FrameworkMessages.getMessageTypes());
 

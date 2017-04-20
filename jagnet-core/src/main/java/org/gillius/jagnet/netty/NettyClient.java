@@ -1,18 +1,16 @@
 package org.gillius.jagnet.netty;
 
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.*;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LineBasedFrameDecoder;
-import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.GenericFutureListener;
-import org.gillius.jagnet.Client;
-import org.gillius.jagnet.Connection;
-import org.gillius.jagnet.ConnectionListener;
-import org.gillius.jagnet.NoopConnectionListener;
+import org.gillius.jagnet.*;
 import org.gillius.jagnet.proxy.client.ProxyClientHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,7 +68,6 @@ public class NettyClient implements Client {
 		this.listener = listener;
 	}
 
-	@Override
 	public void start() {
 		//TODO: prevent starting more than once (race conditions on close/failure)
 
@@ -121,8 +118,17 @@ public class NettyClient implements Client {
 		  .addLast(new KryoDecoder(kryoBuilder.get()))
 		  .addLast(new KryoEncoder(kryoBuilder.get()))
 		  //TODO: setListener after opening connection?
-		  .addLast(new NettyHandler(connection, listener, connFuture))
+		  .addLast(new NettyHandler(connection, listener, getConnectionStateListener()))
 //		  .addLast(new LoggingHandler())
 		;
+	}
+
+	private ConnectionStateListener getConnectionStateListener() {
+		return new ConnectionStateListener() {
+			@Override
+			public void onConnected(ConnectionListenerContext ctx) {
+				connFuture.complete(connection);
+			}
+		};
 	}
 }

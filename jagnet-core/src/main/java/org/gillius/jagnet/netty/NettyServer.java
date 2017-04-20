@@ -11,10 +11,6 @@ import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.gillius.jagnet.*;
 
-import java.util.NoSuchElementException;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 public class NettyServer implements Server {
@@ -22,36 +18,11 @@ public class NettyServer implements Server {
 	private final KryoBuilder kryoBuilder = new KryoBuilder();
 	private AcceptPolicy acceptPolicy = AcceptAllPolicy.INSTANCE;
 	private Function<NewConnectionContext, ConnectionListener> listenerFactory = null;
-
-	private final BlockingQueue<CompletableFuture<Connection>> unconnectedSlots;
-	private final BlockingQueue<CompletableFuture<Connection>> slots;
+	private ConnectionStateListener connectionStateListener = NoopConnectionListener.INSTANCE;
 
 	private ChannelGroup allChannels;
 	private EventLoopGroup group;
-	private Channel serverChannel; //TODO: close listener when slots are full?
-
-	/**
-	 * Create a server with no limit on the number of connections. This means {@link #getConnection()} will always throw,
-	 * so connections are received solely through the listener.
-	 */
-	public NettyServer() {
-		unconnectedSlots = null;
-		slots = null;
-	}
-
-	/**
-	 * Creates a server with a fixed number of connection slots. Each call to {@link #getConnection()} will return the
-	 * next slot until none remain.
-	 */
-	public NettyServer(int numSlots) {
-		unconnectedSlots = new ArrayBlockingQueue<>(numSlots);
-		slots = new ArrayBlockingQueue<>(numSlots);
-		for (int i=0; i < numSlots; ++i) {
-			CompletableFuture<Connection> f = new CompletableFuture<>();
-			unconnectedSlots.add(f);
-			slots.add(f);
-		}
-	}
+	private Channel serverChannel;
 
 	@Override
 	public void setPort(int port) {
@@ -73,14 +44,26 @@ public class NettyServer implements Server {
 		this.listenerFactory = factory;
 	}
 
+	@Override
 	public AcceptPolicy getAcceptPolicy() {
 		return acceptPolicy;
 	}
 
+	@Override
 	public void setAcceptPolicy(AcceptPolicy acceptPolicy) {
 		if (acceptPolicy == null)
 			acceptPolicy = AcceptAllPolicy.INSTANCE;
 		this.acceptPolicy = acceptPolicy;
+	}
+
+	@Override
+	public ConnectionStateListener getConnectionStateListener() {
+		return connectionStateListener;
+	}
+
+	@Override
+	public void setConnectionStateListener(ConnectionStateListener connectionStateListener) {
+		this.connectionStateListener = connectionStateListener;
 	}
 
 	@Override
@@ -103,19 +86,8 @@ public class NettyServer implements Server {
 					 return;
 				 }
 
-				 CompletableFuture<Connection> connFuture;
-				 if (unconnectedSlots != null) {
-					 connFuture = unconnectedSlots.poll();
-					 if (connFuture == null) {
-						 ch.close();
-						 return;
-					 }
-				 } else {
-				 	connFuture = new CompletableFuture<>();
-				 }
-
 				 allChannels.add(ch);
-				 setupPipeline(ch, connFuture);
+				 setupPipeline(ch);
 			 }
 		 })
 		 .childOption(ChannelOption.TCP_NODELAY, true)
@@ -131,6 +103,7 @@ public class NettyServer implements Server {
 		}
 	}
 
+	@Override
 	public void stopAcceptingNewConnections() {
 		serverChannel.close();
 	}
@@ -156,19 +129,11 @@ public class NettyServer implements Server {
 		group = null;
 	}
 
-	@Override
-	public CompletableFuture<Connection> getConnection() {
-		CompletableFuture<Connection> ret = slots.poll();
-		if (ret == null)
-			throw new NoSuchElementException("No slots remaining");
-		return ret;
-	}
-
-	protected ChannelPipeline setupPipeline(SocketChannel ch, CompletableFuture<Connection> connFuture) {
-		return ch.pipeline()
-		         .addLast(new LengthFieldBasedFrameDecoder(65535, 0, 2, 0, 2))
-		         .addLast(new KryoDecoder(kryoBuilder.get()))
-		         .addLast(new KryoEncoder(kryoBuilder.get()))
-		         .addLast(new NettyHandler(new NettyConnection(ch), listenerFactory.apply(new NettyNewConnectionContext(ch)), connFuture));
+	protected void setupPipeline(SocketChannel ch) {
+		ch.pipeline()
+		  .addLast(new LengthFieldBasedFrameDecoder(65535, 0, 2, 0, 2))
+		  .addLast(new KryoDecoder(kryoBuilder.get()))
+		  .addLast(new KryoEncoder(kryoBuilder.get()))
+		  .addLast(new NettyHandler(new NettyConnection(ch), listenerFactory.apply(new NettyNewConnectionContext(ch)), connectionStateListener));
 	}
 }

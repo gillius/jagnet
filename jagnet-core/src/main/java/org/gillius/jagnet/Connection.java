@@ -1,5 +1,6 @@
 package org.gillius.jagnet;
 
+import java.net.SocketAddress;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
@@ -8,6 +9,10 @@ public interface Connection extends AutoCloseable {
 	void sendReliable(Object message);
 
 	void sendFast(Object message);
+
+	SocketAddress getLocalAddress();
+
+	SocketAddress getRemoteAddress();
 
 	boolean isOpen();
 

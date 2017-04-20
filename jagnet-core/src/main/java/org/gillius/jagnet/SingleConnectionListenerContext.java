@@ -1,5 +1,8 @@
 package org.gillius.jagnet;
 
+/**
+ * A stateless listener context that ignores event "consumption".
+ */
 public class SingleConnectionListenerContext implements ConnectionListenerContext {
 	private final Connection connection;
 

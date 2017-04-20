@@ -15,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Random;
-import java.util.concurrent.CompletableFuture;
 
 import static java.util.Arrays.asList;
 import static org.gillius.jalleg.binding.AllegroLibrary.*;
@@ -238,15 +237,18 @@ public class BallAndPaddleGame extends Game {
 			objectManager.setOnUpdateListener(m -> copier.copy(m.getMessage(), m.getRegisteredObject()));
 
 			if (isServer && proxyTag == null) {
-				NettyServer server = new NettyServer(1);
+				FirstConnectionListener firstConnectionListener = new FirstConnectionListener();
+				NettyServer server = new NettyServer();
 				server.registerMessages(messages);
 				server.setPort(port);
+				server.setAcceptPolicy(new AcceptFirstPolicy());
+				server.setConnectionStateListener(firstConnectionListener);
 				server.setListener(
 						ConnectionListenerChain.of(new StandardConnectionListener(),
 						                           deferred));
 				server.start();
 				log.info("Started server on port {}. Waiting for clients to join.", port);
-				connection = server.getConnection().get();
+				connection = firstConnectionListener.getConnection().get();
 				server.stopAcceptingNewConnections();
 				connection.getCloseFuture().thenRun(server::close);
 

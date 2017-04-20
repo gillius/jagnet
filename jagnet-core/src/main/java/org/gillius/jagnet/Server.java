@@ -2,7 +2,7 @@ package org.gillius.jagnet;
 
 import java.util.function.Function;
 
-public interface Server extends ConnectionSource, AutoCloseable {
+public interface Server extends AutoCloseable {
 	void setPort(int port);
 
 	void registerMessages(Iterable<Class<?>> messageTypes);
@@ -25,6 +25,18 @@ public interface Server extends ConnectionSource, AutoCloseable {
 	 * This method must be called before the server is started and cannot be null.
 	 */
 	void setListenerFactory(Function<NewConnectionContext, ConnectionListener> factory);
+
+	AcceptPolicy getAcceptPolicy();
+
+	void setAcceptPolicy(AcceptPolicy acceptPolicy);
+
+	ConnectionStateListener getConnectionStateListener();
+
+	void setConnectionStateListener(ConnectionStateListener connectionStateListener);
+
+	void start();
+
+	void stopAcceptingNewConnections();
 
 	@Override
 	void close();
