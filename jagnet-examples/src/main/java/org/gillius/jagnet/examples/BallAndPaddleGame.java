@@ -76,7 +76,7 @@ public class BallAndPaddleGame extends Game {
 	@Override
 	protected void onAllegroStarted() {
 		initAddons(AllegroAddon.Primitives, AllegroAddon.Font, AllegroAddon.Keyboard, AllegroAddon.Joystick,
-		           AllegroAddon.Mouse, AllegroAddon.Audio, AllegroAddon.Haptic);
+		           AllegroAddon.Mouse, AllegroAddon.Audio);
 		al_reserve_samples(1);
 
 		white = al_map_rgb_f(1f, 1f, 1f);
@@ -141,9 +141,6 @@ public class BallAndPaddleGame extends Game {
 
 		if (ball.pos.collidesWith(rightPlayer)) {
 			beeper.beep(200, gameTime + 0.1);
-			if (canInstallRumble())
-				installRumble(0.6, 0.25);
-			playRumble(1);
 			ball.dx *= -1.2f;
 			objectManager.sendReliableUpdate(ball); //only server will send these updates as owned is true only there
 		} else if (ball.pos.collidesWith(leftPlayer)) {
