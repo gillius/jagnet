@@ -25,6 +25,7 @@ public class BallAndPaddleGame extends Game {
 	private final Runnable network;
 	private final boolean isServer;
 	private final Connection connection;
+	private final ObjectManager objectManager;
 
 	private ALLEGRO_COLOR white;
 	private ALLEGRO_FONT font;
@@ -58,6 +59,7 @@ public class BallAndPaddleGame extends Game {
 		this.network = network;
 		this.isServer = isServer;
 		this.connection = connection;
+		this.objectManager = objectManager;
 
 		setAutoResize(true);
 		setNewWindowTitle("Ball and Paddle " + (isServer ? "Server" : "Client"));
@@ -65,9 +67,10 @@ public class BallAndPaddleGame extends Game {
 		ball.pos = new Rect(49.5f, 49.5f, 1, 1);
 		leftPlayer = new Rect(4.5f, 45, 1, 10);
 		rightPlayer = new Rect(94.5f, 45, 1, 10);
-		objectManager.registerObject(0, ball);
-		objectManager.registerObject(1, isServer ? rightPlayer : leftPlayer);
-		objectManager.registerObject(2, score);
+		objectManager.registerObject(0, ball).setOwned(isServer);
+		objectManager.registerObject(1, leftPlayer).setOwned(isServer);
+		objectManager.registerObject(2, rightPlayer).setOwned(!isServer);
+		objectManager.registerObject(3, score);
 	}
 
 	@Override
@@ -96,7 +99,7 @@ public class BallAndPaddleGame extends Game {
 			ball.pos.y = 49.5f;
 			ball.dx = 0.25f * (rnd.nextBoolean() ? 1f : -1f);
 			ball.dy = 0.25f * (rnd.nextBoolean() ? 1f : -1f);
-			connection.sendReliable(new ObjectUpdateMessage<>(0, ball));
+			objectManager.sendReliableUpdate(ball);
 		}
 	}
 
@@ -124,14 +127,14 @@ public class BallAndPaddleGame extends Game {
 			if (isKeyDown(ALLEGRO_KEY_Z) || (useMouse && mousePos.x < 50 && mousePos.y > leftPlayer.centerY()))
 				leftPlayer.move(0f, PADDLE_SPEED);
 			leftPlayer.constrainWithin(board);
-			connection.sendReliable(new ObjectUpdateMessage<>(1, leftPlayer));
+			objectManager.sendReliableUpdate(leftPlayer);
 		} else {
 			if (isKeyDown(ALLEGRO_KEY_UP) || isJoyDirection(Direction.Up) || (useMouse && mousePos.x > 50 && mousePos.y < rightPlayer.centerY()))
 				rightPlayer.move(0f, -PADDLE_SPEED);
 			if (isKeyDown(ALLEGRO_KEY_DOWN) || isJoyDirection(Direction.Down) || (useMouse && mousePos.x > 50 && mousePos.y > rightPlayer.centerY()))
 				rightPlayer.move(0f, PADDLE_SPEED);
 			rightPlayer.constrainWithin(board);
-			connection.sendReliable(new ObjectUpdateMessage<>(1, rightPlayer));
+			objectManager.sendReliableUpdate(rightPlayer);
 		}
 
 		ball.pos.move(ball.dx, ball.dy);
@@ -142,13 +145,11 @@ public class BallAndPaddleGame extends Game {
 				installRumble(0.6, 0.25);
 			playRumble(1);
 			ball.dx *= -1.2f;
-			if (isServer)
-				connection.sendReliable(new ObjectUpdateMessage<>(0, ball));
+			objectManager.sendReliableUpdate(ball); //only server will send these updates as owned is true only there
 		} else if (ball.pos.collidesWith(leftPlayer)) {
 			beeper.beep(150, gameTime + 0.1);
 			ball.dx *= -1.2f;
-			if (isServer)
-				connection.sendReliable(new ObjectUpdateMessage<>(0, ball));
+			objectManager.sendReliableUpdate(ball); //only server will send these updates as owned is true only there
 		}
 
 		if (ball.pos.y <= board.y ||
@@ -160,13 +161,13 @@ public class BallAndPaddleGame extends Game {
 		if (isServer) {
 			if (ball.pos.right() > board.right()) {
 				score.leftScore++;
-				connection.sendReliable(new ObjectUpdateMessage<>(2, score));
+				objectManager.sendReliableUpdate(score);
 				resetBall();
 			}
 
 			if (ball.pos.x < board.x) {
 				score.rightScore++;
-				connection.sendReliable(new ObjectUpdateMessage<>(2, score));
+				objectManager.sendReliableUpdate(score);
 				resetBall();
 			}
 		}
@@ -271,6 +272,7 @@ public class BallAndPaddleGame extends Game {
 				connection = client.getConnection().get();
 			}
 
+			objectManager.setUpdateConnection(connection);
 			new BallAndPaddleGame(objectManager, deferred, isServer, connection).run();
 
 		} finally {
