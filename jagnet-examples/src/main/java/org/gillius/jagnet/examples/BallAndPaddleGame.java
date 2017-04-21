@@ -70,7 +70,7 @@ public class BallAndPaddleGame extends Game {
 		objectManager.registerObject(ball).setOwned(isServer);
 		objectManager.registerObject(leftPlayer).setOwned(isServer);
 		objectManager.registerObject(rightPlayer).setOwned(!isServer);
-		objectManager.registerObject(score);
+		objectManager.registerObject(score).setOwned(isServer);
 	}
 
 	@Override
