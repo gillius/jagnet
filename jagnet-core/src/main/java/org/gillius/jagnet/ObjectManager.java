@@ -11,13 +11,25 @@ public class ObjectManager {
 	private final Map<Integer, Registration> idToRegistration = new HashMap<>();
 	private final Map<Object, Registration> objectToRegistration = new IdentityHashMap<>();
 
+	private int nextId = 0;
+
 	private Connection updateConnection = null;
 
 	private Consumer<? super ObjectCreateMessage> onCreateListener = NOOP;
 	private Consumer<? super ObjectUpdateMessage> onUpdateListener = NOOP;
 	private Function<Object, Object> sendUpdateTransformation = Function.identity();
 
+	/**
+	 * Registers an object with an automatic ID. The existing ID algorithm works only with the assumption that only one
+	 * side creates all objects, or that both sides create the same objects in the same order.
+	 */
+	public Registration registerObject(Object object) {
+		return registerObject(nextId, object);
+	}
+
 	public Registration registerObject(int id, Object object) {
+		nextId = Math.max(id + 1, nextId);
+
 		//Remove existing mapping for object or ID, if any
 		Registration old = objectToRegistration.remove(object);
 		if (old != null)
@@ -51,7 +63,7 @@ public class ObjectManager {
 	}
 
 	public void handleCreate(ObjectCreateMessage<?> message) {
-		registerObject(message.getObjectId(), message.getMessage());
+		registerObject(message.getObjectId(), message.getMessage()).setOwned(false);
 		onCreateListener.accept(message);
 	}
 
@@ -132,7 +144,8 @@ public class ObjectManager {
 
 		/**
 		 * Returns true if this system owns the state of the object. The object manager skips sending updates to the object's
-		 * state if it is not owned. By default, the registration assumes the object is owned.
+		 * state if it is not owned. By default, the registration assumes the object is owned. Objects received from remote
+		 * systems (via {@link ObjectCreateMessage} are assumed owned false.
 		 */
 		public boolean isOwned() {
 			return owned;

@@ -67,10 +67,10 @@ public class BallAndPaddleGame extends Game {
 		ball.pos = new Rect(49.5f, 49.5f, 1, 1);
 		leftPlayer = new Rect(4.5f, 45, 1, 10);
 		rightPlayer = new Rect(94.5f, 45, 1, 10);
-		objectManager.registerObject(0, ball).setOwned(isServer);
-		objectManager.registerObject(1, leftPlayer).setOwned(isServer);
-		objectManager.registerObject(2, rightPlayer).setOwned(!isServer);
-		objectManager.registerObject(3, score);
+		objectManager.registerObject(ball).setOwned(isServer);
+		objectManager.registerObject(leftPlayer).setOwned(isServer);
+		objectManager.registerObject(rightPlayer).setOwned(!isServer);
+		objectManager.registerObject(score);
 	}
 
 	@Override
