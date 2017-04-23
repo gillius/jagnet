@@ -37,6 +37,7 @@ public class ChatServer {
 		}
 
 		public void onUserLeave(Connection conn) {
+			activeUsers.remove(conn);
 			sendMessage("Server", getName(conn) + " from " + conn.getRemoteAddress() + " has left the chat");
 		}
 
