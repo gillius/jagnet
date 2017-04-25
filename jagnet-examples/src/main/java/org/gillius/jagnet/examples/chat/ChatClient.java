@@ -1,9 +1,6 @@
 package org.gillius.jagnet.examples.chat;
 
-import org.gillius.jagnet.ChatMessage;
-import org.gillius.jagnet.Connection;
-import org.gillius.jagnet.ConnectionListener;
-import org.gillius.jagnet.ConnectionListenerContext;
+import org.gillius.jagnet.*;
 import org.gillius.jagnet.netty.NettyClient;
 
 import java.io.BufferedReader;
@@ -17,15 +14,9 @@ public class ChatClient {
 		client.setHost("localhost");
 		client.registerMessages(ChatServer.MESSAGE_CLASSES);
 
-		client.setListener(new ConnectionListener() {
-			@Override
-			public void onReceive(ConnectionListenerContext ctx, Object message) {
-				if (message instanceof ChatMessage) {
-					ChatMessage chatMessage = (ChatMessage) message;
-					System.out.format("%20s: %s%n", chatMessage.name, chatMessage.message);
-				}
-			}
-		});
+		client.setListener(new TypedConnectionListener()
+				                   .setListener(ChatMessage.class, (ctx, chatMessage) ->
+						                   System.out.format("%20s: %s%n", chatMessage.name, chatMessage.message)));
 
 		client.start();
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));

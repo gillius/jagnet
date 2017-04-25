@@ -9,7 +9,8 @@ import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiConsumer;
+
+import static org.gillius.jagnet.FilteredReceivedMessageListener.typedListener;
 
 public class ChatServer {
 	public static final List<Class<?>> MESSAGE_CLASSES = Arrays.asList(ChatRegistration.class, ClientChatMessage.class);
@@ -61,7 +62,7 @@ public class ChatServer {
 	private static class RemoteChatClient implements ConnectionListener {
 		private final ChatRoom room;
 
-		private BiConsumer<ConnectionListenerContext, Object> state = this::registrationStateReceive;
+		private ReceivedMessageListener state = typedListener(ChatRegistration.class, this::registrationStateReceive);
 
 		public RemoteChatClient(ChatRoom room) {
 			this.room = room;
@@ -72,28 +73,23 @@ public class ChatServer {
 			room.onUserLeave(ctx.getConnection());
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
 		public void onReceive(ConnectionListenerContext ctx, Object message) {
-			state.accept(ctx, message);
+			state.onReceive(ctx, message);
 		}
 
-		private void registrationStateReceive(ConnectionListenerContext ctx, Object message) {
-			if (message instanceof ChatRegistration) {
-				ChatRegistration registration = (ChatRegistration) message;
-				if (registration.name == null || registration.name.isEmpty()) {
-					ctx.getConnection().close();
-				} else {
-					room.onUserJoin(ctx.getConnection(), registration.name);
-					state = this::activeStateReceive;
-				}
+		private void registrationStateReceive(ConnectionListenerContext ctx, ChatRegistration registration) {
+			if (registration.name == null || registration.name.isEmpty()) {
+				ctx.getConnection().close();
+			} else {
+				room.onUserJoin(ctx.getConnection(), registration.name);
+				state = typedListener(ClientChatMessage.class, this::activeStateReceive);
 			}
 		}
 
-		private void activeStateReceive(ConnectionListenerContext ctx, Object message) {
-			if (message instanceof ClientChatMessage) {
-				ClientChatMessage chatMessage = (ClientChatMessage) message;
-				room.onClientChat(ctx.getConnection(), chatMessage);
-			}
+		private void activeStateReceive(ConnectionListenerContext ctx, ClientChatMessage chatMessage) {
+			room.onClientChat(ctx.getConnection(), chatMessage);
 		}
 	}
 }
