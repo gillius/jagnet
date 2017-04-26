@@ -2,7 +2,6 @@ package org.gillius.jagnet.examples;
 
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
 
 public class LoggingHandler extends ChannelDuplexHandler {
@@ -24,6 +23,12 @@ public class LoggingHandler extends ChannelDuplexHandler {
 //		System.out.println(m.readCharSequence(m.readableBytes(), CharsetUtil.US_ASCII));
 		System.out.println("Read: " + msg);
 		super.channelRead(ctx, msg);
+	}
+
+	@Override
+	public void close(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception {
+		System.out.println("Closing channel");
+		super.close(ctx, promise);
 	}
 
 	@Override

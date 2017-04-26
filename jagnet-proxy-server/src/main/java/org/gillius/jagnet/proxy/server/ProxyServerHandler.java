@@ -45,7 +45,7 @@ class ProxyServerHandler extends ByteToMessageDecoder {
 
 			case TAG:
 				Promise<Channel> promise = ctx.executor().newPromise();
-				log.info("New connection for tag {}", line);
+				log.info("New connection for tag {} from {}", line, ctx.channel());
 				proxyMap.matchChannel(line, ctx.channel(), promise);
 				writeString(ctx, ProxyConstants.WAITING_FOR_REMOTE + "\n");
 				state = State.PROXY;
@@ -73,7 +73,7 @@ class ProxyServerHandler extends ByteToMessageDecoder {
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) { // (4)
 		// Close the connection when an exception is raised.
-		cause.printStackTrace();
+		log.error("Error in pipeline; closing connection", cause);
 		ctx.close();
 	}
 

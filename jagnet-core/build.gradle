@@ -27,6 +27,9 @@ dependencies {
   compile 'com.esotericsoftware:kryo:4.0.0'
 	compile 'io.netty:netty-transport:4.1.9.Final'
 	compile 'io.netty:netty-codec:4.1.9.Final'
+	//Needed for Websocket mode support
+	compile 'io.netty:netty-codec-http:4.1.9.Final'
+	compile 'io.netty:netty-handler:4.1.9.Final'
 
 	compile 'org.slf4j:slf4j-api:1.7.21'
 }
