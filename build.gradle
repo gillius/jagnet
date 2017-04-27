@@ -26,3 +26,5 @@ repositories {
 task wrapper(type: Wrapper) {
   gradleVersion = '3.5'
 }
+
+task stage(dependsOn: [':jagnet-proxy-server:installDist'])
