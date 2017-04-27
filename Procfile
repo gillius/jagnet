@@ -1,1 +1,1 @@
-web: jagnet-proxy-server\build\install\jagnet-proxy-server\bin\jagnet-proxy-server $PORT websocket
+web: jagnet-proxy-server/build/install/jagnet-proxy-server/bin/jagnet-proxy-server $PORT websocket
