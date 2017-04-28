@@ -116,7 +116,7 @@ public class NettyClient implements Client {
 		ch.pipeline()
 		  .addLast(new LengthFieldBasedFrameDecoder(65535, 0, 2, 0, 2))
 		  .addLast(new KryoDecoder(kryoBuilder.get()))
-		  .addLast(new KryoEncoder(kryoBuilder.get()))
+		  .addLast(new KryoEncoder(kryoBuilder.get(), true))
 		  //TODO: setListener after opening connection?
 		  .addLast(new NettyHandler(connection, listener, getConnectionStateListener()))
 //		  .addLast(new LoggingHandler())

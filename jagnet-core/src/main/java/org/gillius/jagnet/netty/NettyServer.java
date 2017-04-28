@@ -124,7 +124,7 @@ public class NettyServer implements Server {
 		ch.pipeline()
 		  .addLast(new LengthFieldBasedFrameDecoder(65535, 0, 2, 0, 2))
 		  .addLast(new KryoDecoder(kryoBuilder.get()))
-		  .addLast(new KryoEncoder(kryoBuilder.get()))
+		  .addLast(new KryoEncoder(kryoBuilder.get(), true))
 		  .addLast(new NettyHandler(new NettyConnection(ch), listenerFactory.apply(new NettyNewConnectionContext(ch)), connectionStateListener));
 	}
 }

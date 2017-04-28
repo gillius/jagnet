@@ -85,9 +85,10 @@ public class ProxyClient {
 						   ChannelPipeline p = ctx.pipeline();
 						   p.remove(LineBasedFrameDecoder.class);
 						   p.remove(ProxyClientHandler.class);
-						   p.addLast(new LengthFieldBasedFrameDecoder(65535, 0, 2, 0, 2));
+						   if (!websocket)
+							   p.addLast(new LengthFieldBasedFrameDecoder(65535, 0, 2, 0, 2));
 						   p.addLast(new KryoDecoder(makeKryo()));
-						   p.addLast(new KryoEncoder(makeKryo()));
+						   p.addLast(new KryoEncoder(makeKryo(), !websocket));
 						   p.addLast(new LoggingHandler());
 
 						   Runnable command = () -> ch.writeAndFlush(new Message("Hello it is " + new Date()));
