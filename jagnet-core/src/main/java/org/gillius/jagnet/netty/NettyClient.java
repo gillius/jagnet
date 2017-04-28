@@ -10,11 +10,14 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LineBasedFrameDecoder;
+import io.netty.handler.codec.http.HttpClientCodec;
+import io.netty.handler.codec.http.HttpObjectAggregator;
 import org.gillius.jagnet.*;
 import org.gillius.jagnet.proxy.client.ProxyClientHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 
 public class NettyClient implements Client {
@@ -22,6 +25,7 @@ public class NettyClient implements Client {
 
 	private int port = -1;
 	private String host = null;
+	private Protocol protocol = Protocol.TCP;
 	private String proxyTag = null;
 	private final KryoBuilder kryoBuilder = new KryoBuilder();
 	private ConnectionListener listener = NoopConnectionListener.INSTANCE;
@@ -33,6 +37,10 @@ public class NettyClient implements Client {
 	@Override
 	public void setPort(int port) {
 		this.port = port;
+	}
+
+	public void setProtocol(Protocol protocol) {
+		this.protocol = protocol;
 	}
 
 	public void setProxyTag(String proxyTag) {
@@ -81,6 +89,14 @@ public class NettyClient implements Client {
 			 public void initChannel(SocketChannel ch) throws Exception {
 				 connection = new NettyConnection(ch);
 				 connection.getCloseFuture().thenRun(NettyClient.this::close);
+				 if (protocol == Protocol.WS) {
+					 ch.pipeline()
+					   .addLast(new HttpClientCodec())
+					   .addLast(new HttpObjectAggregator(8192))
+					   //TODO: take URI parameter
+					   .addLast(new WebsocketClientHandler(new URI("ws", null, host, port, "/websocket", null, null)));
+				 }
+
 				 if (proxyTag != null) {
 					 ch.pipeline()
 					   .addLast(new LineBasedFrameDecoder(512, true, true))
