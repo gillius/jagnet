@@ -1,7 +1,6 @@
 package org.gillius.jagnet.proxy.server;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
@@ -11,9 +10,9 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LineBasedFrameDecoder;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
-import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.gillius.jagnet.netty.WebsocketServerFrameHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -118,43 +117,11 @@ public class ProxyServer implements AutoCloseable {
 		    .addLast(new HttpServerCodec())
 		    .addLast(new HttpObjectAggregator(65536))
 		    .addLast(new WebSocketServerProtocolHandler("/websocket", null, true))
-		    .addLast(new WebsocketFrameHandler())
+		    .addLast(new WebsocketServerFrameHandler())
 		    .addLast(new LineBasedFrameDecoder(512, true, true))
 			  .addLast(new ProxyServerHandler(proxyMap))
 			;
 		}
 	}
 
-	private static class WebsocketFrameHandler extends ChannelDuplexHandler {
-		private boolean wsActive = false;
-
-		@Override
-		public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-			if (evt instanceof WebSocketServerProtocolHandler.HandshakeComplete) {
-				WebSocketServerProtocolHandler.HandshakeComplete handshakeComplete = (WebSocketServerProtocolHandler.HandshakeComplete) evt;
-				wsActive = true;
-			}
-			super.userEventTriggered(ctx, evt);
-		}
-
-		@Override
-		public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-			if (msg instanceof BinaryWebSocketFrame) {
-				BinaryWebSocketFrame frame = (BinaryWebSocketFrame) msg;
-				ctx.fireChannelRead(frame.content());
-			} else {
-				super.channelRead(ctx, msg);
-			}
-		}
-
-		@Override
-		public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-			if (wsActive) {
-				ByteBuf buf = (ByteBuf) msg;
-				ctx.write(new BinaryWebSocketFrame(buf), promise);
-			} else {
-				super.write(ctx, msg, promise);
-			}
-		}
-	}
 }

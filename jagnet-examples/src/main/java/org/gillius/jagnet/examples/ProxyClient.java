@@ -2,27 +2,22 @@ package org.gillius.jagnet.examples;
 
 import com.esotericsoftware.kryo.Kryo;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LineBasedFrameDecoder;
-import io.netty.handler.codec.http.DefaultHttpHeaders;
-import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpObjectAggregator;
-import io.netty.handler.codec.http.websocketx.*;
-import io.netty.util.CharsetUtil;
 import org.gillius.jagnet.netty.KryoDecoder;
 import org.gillius.jagnet.netty.KryoEncoder;
+import org.gillius.jagnet.netty.WebsocketClientHandler;
 import org.gillius.jagnet.proxy.client.ProxyClientHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
@@ -131,61 +126,4 @@ public class ProxyClient {
 		}
 	}
 
-	private static class WebsocketClientHandler extends ChannelDuplexHandler {
-		private boolean wsActive = false;
-
-		private final WebSocketClientHandshaker handshaker;
-
-		private WebsocketClientHandler(URI destination) throws URISyntaxException {
-			handshaker = WebSocketClientHandshakerFactory.newHandshaker(
-					destination,
-			    WebSocketVersion.V13, null, false, new DefaultHttpHeaders());
-		}
-
-		@Override
-		public void channelActive(ChannelHandlerContext ctx) {
-			handshaker.handshake(ctx.channel());
-		}
-
-		@Override
-		public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-			Channel ch = ctx.channel();
-			if (!handshaker.isHandshakeComplete()) {
-				handshaker.finishHandshake(ch, (FullHttpResponse) msg);
-				wsActive = true;
-				ctx.fireChannelActive();
-				return;
-			}
-
-			if (msg instanceof FullHttpResponse) {
-				FullHttpResponse response = (FullHttpResponse) msg;
-				throw new IllegalStateException(
-						"Unexpected FullHttpResponse (getStatus=" + response.status() +
-						", content=" + response.content().toString(CharsetUtil.UTF_8) + ')');
-			}
-
-			WebSocketFrame frame = (WebSocketFrame) msg;
-			if (frame instanceof BinaryWebSocketFrame) {
-				BinaryWebSocketFrame binaryFrame = (BinaryWebSocketFrame) frame;
-				ctx.fireChannelRead(binaryFrame.content());
-
-			} else if (frame instanceof CloseWebSocketFrame) {
-				System.out.println("WebSocket Client received closing");
-				ch.close();
-
-			} else {
-				log.warn("Ignoring unrecognized message {}", msg);
-			}
-		}
-
-		@Override
-		public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-			if (wsActive) {
-				ByteBuf buf = (ByteBuf) msg;
-				ctx.write(new BinaryWebSocketFrame(buf), promise);
-			} else {
-				super.write(ctx, msg, promise);
-			}
-		}
-	}
 }
