@@ -5,9 +5,6 @@ import org.gillius.jagnet.netty.NettyClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
-
 public class ClientExample {
 	private static final Logger log = LoggerFactory.getLogger(ClientExample.class);
 
@@ -16,6 +13,8 @@ public class ClientExample {
 		client.setPort(54555);
 		client.setHost("localhost");
 //		client.setProxyTag("thetag");
+//		client.setPort(56238);
+//		client.setProxyTag("service:ServerExample");
 
 		TimeSync sync = new TimeSync();
 

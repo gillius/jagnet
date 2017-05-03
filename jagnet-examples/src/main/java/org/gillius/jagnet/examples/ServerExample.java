@@ -16,6 +16,11 @@ public class ServerExample {
 //		remote.setPort(8000);
 //		remote.setProxyTag("thetag");
 
+//		NettyRemoteServer remote = new NettyRemoteServer();
+//		remote.setProxyHost("localhost");
+//		remote.setServiceTag("ServerExample");
+//		remote.setPort(56238);
+
 		remote.setConnectionStateListener(new ConnectionStateListener() {
 			@Override
 			public void onConnected(ConnectionListenerContext ctx) {
