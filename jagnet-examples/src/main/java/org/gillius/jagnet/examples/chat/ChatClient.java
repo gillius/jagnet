@@ -8,16 +8,16 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 
 public class ChatClient {
-	public static void main(String[] args) {
-		NettyClient client = new NettyClient();
-		client.setPort(54555);
-		client.setHost("localhost");
-		client.registerMessages(ChatServer.MESSAGE_CLASSES);
+	public static void main(String[] args) throws Exception {
+		ConnectionParams params = new ConnectionParams()
+				.setByURI("tcp://localhost")
+				.registerMessages(ChatServer.MESSAGE_CLASSES);
 
-		client.setListener(new TypedConnectionListener()
+		params.setListener(new TypedConnectionListener()
 				                   .setListener(ChatMessage.class, (ctx, chatMessage) ->
 						                   System.out.format("%20s: %s%n", chatMessage.name, chatMessage.message)));
 
+		NettyClient client = new NettyClient(params);
 		client.start();
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 		System.out.println("Connecting to server...");

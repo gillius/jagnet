@@ -1,5 +1,6 @@
 package org.gillius.jagnet.netty;
 
+import com.esotericsoftware.kryo.Kryo;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -23,38 +24,14 @@ import java.util.concurrent.CompletableFuture;
 public class NettyClient implements Client {
 	private static final Logger log = LoggerFactory.getLogger(NettyClient.class);
 
-	private int port = -1;
-	private String host = null;
-	private Protocol protocol = Protocol.TCP;
-	private String proxyTag = null;
-	private final KryoBuilder kryoBuilder = new KryoBuilder();
-	private ConnectionListener listener = NoopConnectionListener.INSTANCE;
+	private final ConnectionParams params;
 
 	private NettyConnection connection;
 	private final CompletableFuture<Connection> connFuture = new CompletableFuture<>();
 	private EventLoopGroup group;
 
-	@Override
-	public void setPort(int port) {
-		this.port = port;
-	}
-
-	public void setProtocol(Protocol protocol) {
-		this.protocol = protocol;
-	}
-
-	public void setProxyTag(String proxyTag) {
-		this.proxyTag = proxyTag;
-	}
-
-	@Override
-	public void registerMessages(Iterable<Class<?>> messageTypes) {
-		kryoBuilder.registerMessages(messageTypes);
-	}
-
-	@Override
-	public void registerMessages(Class<?>... messageTypes) {
-		kryoBuilder.registerMessages(messageTypes);
+	public NettyClient(ConnectionParams params) {
+		this.params = params.clone();
 	}
 
 	@Override
@@ -67,17 +44,10 @@ public class NettyClient implements Client {
 		group = null;
 	}
 
-	@Override
-	public void setHost(String host) {
-		this.host = host;
-	}
-
-	public void setListener(ConnectionListener listener) {
-		this.listener = listener;
-	}
-
 	public void start() {
 		//TODO: prevent starting more than once (race conditions on close/failure)
+
+		Kryo kryo = KryoBuilder.build(params.getMessageTypes());
 
 		group = new NioEventLoopGroup();
 		Bootstrap b = new Bootstrap();
@@ -89,33 +59,35 @@ public class NettyClient implements Client {
 			 public void initChannel(SocketChannel ch) throws Exception {
 				 connection = new NettyConnection(ch);
 				 connection.getCloseFuture().thenRun(NettyClient.this::close);
-				 if (protocol == Protocol.WS) {
+				 if (params.getProtocol() == Protocol.WS) {
+					 URI uri = new URI("ws", null,
+					                   params.getRemoteAddress().getHostString(), params.getRemoteAddress().getPort(),
+					                   params.getWebsocketPath(), null, null);
 					 ch.pipeline()
 					   .addLast(new HttpClientCodec())
 					   .addLast(new HttpObjectAggregator(8192))
-					   //TODO: take URI parameter
-					   .addLast(new WebsocketClientHandler(new URI("ws", null, host, port, "/websocket", null, null)));
+					   .addLast(new WebsocketClientHandler(uri));
 				 }
 
-				 if (proxyTag != null) {
+				 if (params.isProxyMode()) {
 					 ch.pipeline()
 					   .addLast(new LineBasedFrameDecoder(512, true, true))
-					   .addLast(new ProxyClientHandler(proxyTag, ctx -> {
+					   .addLast(new ProxyClientHandler(params.getProxyTag(), ctx -> {
 						   log.info("Switching from proxy mode");
 						   ChannelPipeline p = ctx.pipeline();
 						   p.remove(LineBasedFrameDecoder.class);
 						   p.remove(ProxyClientHandler.class);
-						   setupPipeline(ch);
+						   setupPipeline(ch, kryo);
 						   ch.pipeline().fireChannelActive();
 					   }));
 				 } else {
-					 setupPipeline(ch);
+					 setupPipeline(ch, kryo);
 				 }
 			 }
 		 });
 
 		// Start the client.
-		b.connect(host, port).addListener(future -> {
+		b.connect(params.getRemoteAddress()).addListener(future -> {
 			if (!future.isSuccess()) {
 				connFuture.completeExceptionally(future.cause());
 				close();
@@ -128,14 +100,12 @@ public class NettyClient implements Client {
 		return connFuture;
 	}
 
-	protected void setupPipeline(SocketChannel ch) {
+	protected void setupPipeline(SocketChannel ch, Kryo kryo) {
 		ch.pipeline()
 		  .addLast(new LengthFieldBasedFrameDecoder(65535, 0, 2, 0, 2))
-		  .addLast(new KryoDecoder(kryoBuilder.get()))
-		  .addLast(new KryoEncoder(kryoBuilder.get(), true))
-		  //TODO: setListener after opening connection?
-		  .addLast(new NettyHandler(connection, listener, getConnectionStateListener()))
-//		  .addLast(new LoggingHandler())
+		  .addLast(new KryoDecoder(kryo))
+		  .addLast(new KryoEncoder(kryo, true))
+		  .addLast(new NettyHandler(connection, params.getListenerFactory().apply(new NettyNewConnectionContext(ch)), getConnectionStateListener()))
 		;
 	}
 

@@ -14,6 +14,7 @@ import org.gillius.jalleg.framework.math.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
 import java.util.Random;
 
 import static java.util.Arrays.asList;
@@ -251,20 +252,20 @@ public class BallAndPaddleGame extends Game {
 				connection.getCloseFuture().thenRun(server::close);
 
 			} else {
-				NettyClient client = new NettyClient();
-				client.registerMessages(messages);
-				client.setPort(port);
-				client.setHost(host);
+				ConnectionParams params = new ConnectionParams()
+						.registerMessages(messages)
+						.setRemoteAddress(new InetSocketAddress(host, port));
 				if (proxyTag != null) {
-					client.setProxyTag(proxyTag);
+					params.setProxyTag(proxyTag);
 					log.info("Proxy tag: {}", proxyTag);
 				}
 
-				client.setListener(
+				params.setListener(
 						ConnectionListenerChain.of(new StandardConnectionListener(),
 						                           deferred));
 
-				log.info("Client connecting to {}:{}", host, port);
+				log.info("Client connecting to {}", params.getRemoteAddress());
+				NettyClient client = new NettyClient(params);
 				client.start();
 				connection = client.getConnection().get();
 			}

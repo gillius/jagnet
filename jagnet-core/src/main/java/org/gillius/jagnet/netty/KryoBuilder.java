@@ -23,6 +23,10 @@ public class KryoBuilder implements Supplier<Kryo> {
 
 	@Override
 	public Kryo get() {
+		return build(messageTypes);
+	}
+
+	public static Kryo build(Iterable<Class<?>> messageTypes) {
 		Kryo ret = new Kryo();
 		ret.setReferences(false);
 		ret.setRegistrationRequired(true);

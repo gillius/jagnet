@@ -9,17 +9,17 @@ public class ClientExample {
 	private static final Logger log = LoggerFactory.getLogger(ClientExample.class);
 
 	public static void main(String[] args) throws Exception {
-		NettyClient client = new NettyClient();
-		client.setPort(54555);
-		client.setHost("localhost");
+		ConditionConnectionListener listener = new ConditionConnectionListener();
+
+		ConnectionParams params = new ConnectionParams()
+				.setByURI("tcp://localhost")
+				.setListener(listener);
 //		client.setProxyTag("thetag");
 //		client.setPort(56238);
 //		client.setProxyTag("service:ServerExample");
 
+		NettyClient client = new NettyClient(params);
 		TimeSync sync = new TimeSync();
-
-		ConditionConnectionListener listener = new ConditionConnectionListener();
-		client.setListener(listener);
 
 		client.start();
 		Connection conn = client.getConnection().get();
