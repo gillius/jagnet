@@ -8,6 +8,7 @@ import java.util.LinkedHashSet;
 import java.util.function.Function;
 
 public class ConnectionParams implements Cloneable {
+	private InetSocketAddress localAddress;
 	private InetSocketAddress remoteAddress;
 	private Protocol protocol;
 	private String proxyTag;
@@ -28,22 +29,26 @@ public class ConnectionParams implements Cloneable {
 	}
 
 	/**
-	 * Calls {@link #setByURI(URI)} with the given string parsed as an URI.
+	 * Calls {@link #setByURI(URI, boolean)} with the given string parsed as an URI.
 	 */
-	public ConnectionParams setByURI(String uri) throws URISyntaxException {
-		return setByURI(new URI(uri));
+	public ConnectionParams setByURI(String uri, boolean server) throws URISyntaxException {
+		return setByURI(new URI(uri), server);
 	}
 
 	/**
-	 * Assigns protocol, proxyTag, remoteAddress, and websocketPath from URI. The URI takes the form of:
+	 * Assigns protocol, proxyTag, remoteAddress (or localAddress), and websocketPath from URI. The URI takes the form of:
 	 * protocol://host:port/websocketPath?proxyTag. The protocol is one of "proxy+tcp", "proxy+ws", "tcp", or "ws". The
 	 * proxyTag is observed only if scheme is one of the proxy schemes, and websocketPath observed only if one of the
 	 * websocket (ws) schemes, else those values are set to null.
 	 * <p>
+	 * The server parameter determines if this is to be considered a "server" URI. In a server URI, the proxy type
+	 * protocols assume a remote proxy connection and set remoteAddress. The other protocols assume a local connection
+	 * and set localAddress.
+	 * <p>
 	 * If the port is not specified, it defaults to 80 for ws protocol, or 56238 for TCP proxy mode, or 54555 for TCP
 	 * not proxy mode.
 	 */
-	public ConnectionParams setByURI(URI uri) {
+	public ConnectionParams setByURI(URI uri, boolean server) {
 		//Wait to assign in case exception occurs later
 
 		Protocol protocol;
@@ -52,12 +57,12 @@ public class ConnectionParams implements Cloneable {
 		switch (uri.getScheme().toLowerCase()) {
 			case "proxy+tcp":
 				protocol = Protocol.TCP;
-				proxyTag = uri.getQuery();
+				proxyTag = getProxyTagFromURI(uri);
 				break;
 
 			case "proxy+ws":
 				protocol = Protocol.WS;
-				proxyTag = uri.getQuery();
+				proxyTag = getProxyTagFromURI(uri);
 				break;
 
 			case "tcp":
@@ -78,7 +83,15 @@ public class ConnectionParams implements Cloneable {
 			port = protocol == Protocol.TCP ? (proxyTag != null ? 56238 : 54555): 80;
 		}
 
-		this.remoteAddress = new InetSocketAddress(uri.getHost(), port);
+		InetSocketAddress addr = new InetSocketAddress(uri.getHost(), port);
+		if (server) {
+			if (proxyTag != null)
+				remoteAddress = addr;
+			else
+				localAddress = addr;
+		} else {
+			remoteAddress = addr;
+		}
 		this.protocol = protocol;
 		this.proxyTag = proxyTag;
 
@@ -88,6 +101,20 @@ public class ConnectionParams implements Cloneable {
 			websocketPath = null;
 
 		return this;
+	}
+
+	private static String getProxyTagFromURI(URI uri) {
+		if (uri.getQuery() == null || uri.getQuery().isEmpty())
+			throw new IllegalArgumentException("proxy type protocol specified but proxyTag not specified");
+		return uri.getQuery();
+	}
+
+	public InetSocketAddress getLocalAddress() {
+		return localAddress;
+	}
+
+	public void setLocalAddress(InetSocketAddress localAddress) {
+		this.localAddress = localAddress;
 	}
 
 	public InetSocketAddress getRemoteAddress() {

@@ -12,7 +12,7 @@ public class ClientExample {
 		ConditionConnectionListener listener = new ConditionConnectionListener();
 
 		ConnectionParams params = new ConnectionParams()
-				.setByURI("tcp://localhost")
+				.setByURI("tcp://localhost", false)
 				.setListener(listener);
 //		client.setProxyTag("thetag");
 //		client.setPort(56238);

@@ -10,7 +10,7 @@ import java.io.InputStreamReader;
 public class ChatClient {
 	public static void main(String[] args) throws Exception {
 		ConnectionParams params = new ConnectionParams()
-				.setByURI("tcp://localhost")
+				.setByURI("tcp://localhost", false)
 				.registerMessages(ChatServer.MESSAGE_CLASSES);
 
 		params.setListener(new TypedConnectionListener()
