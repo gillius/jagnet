@@ -87,7 +87,7 @@ public class NettyClient implements Client {
 		 });
 
 		// Start the client.
-		b.connect(params.getRemoteAddress()).addListener(future -> {
+		b.connect(params.getRemoteAddress(), params.getLocalAddress()).addListener(future -> {
 			if (!future.isSuccess()) {
 				connFuture.completeExceptionally(future.cause());
 				close();
