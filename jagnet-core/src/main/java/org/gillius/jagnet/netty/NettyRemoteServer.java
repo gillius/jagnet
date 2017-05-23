@@ -17,39 +17,32 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
 
-public class NettyRemoteServer implements Server {
+public class NettyRemoteServer {
 	private static final Logger log = LoggerFactory.getLogger(NettyRemoteServer.class);
 
-	private String proxyHost = null;
-	private int port = -1;
-	private String serviceTag = null;
+	private final ConnectionParams params;
 	private final KryoBuilder kryoBuilder = new KryoBuilder();
-	private Function<NewConnectionContext, ConnectionListener> listenerFactory = null;
 	private ConnectionStateListener connectionStateListener = NoopConnectionListener.INSTANCE;
 	private final CompletableFuture<Object> registeredFuture = new CompletableFuture<>();
 
 	private EventLoopGroup group;
 
-	public void setProxyHost(String proxyHost) {
-		this.proxyHost = proxyHost;
+	public NettyRemoteServer(ConnectionParams params) {
+		if (params.getListenerFactory() == null)
+			throw new IllegalArgumentException("listenerFactory not initialized");
+		if (params.getRemoteAddress() == null)
+			throw new IllegalArgumentException("remoteAddress not initialized");
+		if (params.getProxyTag() == null)
+			throw new IllegalArgumentException("proxyTag not initialized");
+
+		this.params = params.clone();
 	}
 
-	public void setPort(int port) {
-		this.port = port;
-	}
-
-	public void setServiceTag(String serviceTag) {
-		this.serviceTag = serviceTag;
-	}
-
-	@Override
 	public AcceptPolicy getAcceptPolicy() {
 		return AcceptAllPolicy.INSTANCE;
 	}
 
-	@Override
 	public void setAcceptPolicy(AcceptPolicy acceptPolicy) {
 		throw new UnsupportedOperationException("Not supported for remote server connections");
 	}
@@ -60,10 +53,6 @@ public class NettyRemoteServer implements Server {
 
 	public void registerMessages(Class<?>... messageTypes) {
 		kryoBuilder.registerMessages(messageTypes);
-	}
-
-	public void setListenerFactory(Function<NewConnectionContext, ConnectionListener> factory) {
-		this.listenerFactory = factory;
 	}
 
 	public ConnectionStateListener getConnectionStateListener() {
@@ -83,15 +72,6 @@ public class NettyRemoteServer implements Server {
 	}
 
 	public void start() {
-		if (listenerFactory == null)
-			throw new IllegalStateException("listenerFactory not initialized");
-		if (port < 0)
-			throw new IllegalStateException("port not initialized");
-		if (proxyHost == null)
-			throw new IllegalStateException("proxyHost not initialized");
-		if (serviceTag == null)
-			throw new IllegalStateException("serviceTag not initialized");
-
 		group = new NioEventLoopGroup();
 		Bootstrap b = new Bootstrap();
 		b.group(group)
@@ -100,33 +80,28 @@ public class NettyRemoteServer implements Server {
 		 .handler(new ChannelInitializer<SocketChannel>() {
 			 @Override
 			 public void initChannel(SocketChannel ch) throws Exception {
-//				 if (protocol == Protocol.WS) {
-//					 ch.pipeline()
-//					   .addLast(new HttpClientCodec())
-//					   .addLast(new HttpObjectAggregator(8192))
-//					   //TODO: take URI parameter
-//					   .addLast(new WebsocketClientHandler(new URI("ws", null, host, port, "/websocket", null, null)));
-//				 }
+				 if (params.getProtocol() == Protocol.WS)
+					 NettyUtils.configurePipelineForWebsocketClient(ch, params);
 
 				 ch.pipeline()
 				   .addLast(new LineBasedFrameDecoder(512, true, true))
-				   .addLast(new ProxyRemoteServerHandler(serviceTag, NettyRemoteServer.this::addClient, registeredFuture));
+				   .addLast(new ProxyRemoteServerHandler(params.getProxyTag(), NettyRemoteServer.this::addClient, registeredFuture));
 			 }
 		 });
 
 		try {
-			b.connect(proxyHost, port).sync();
+			b.connect(params.getRemoteAddress(), params.getLocalAddress()).sync();
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 		}
 	}
 
-	@Override
+//	@Override
 	public void stopAcceptingNewConnections() {
 		throw new UnsupportedOperationException("Not yet supported"); //TODO: support
 	}
 
-	@Override
+//	@Override
 	public void close() {
 		throw new UnsupportedOperationException("Not yet supported"); //TODO: support
 	}
@@ -140,13 +115,8 @@ public class NettyRemoteServer implements Server {
 		 .handler(new ChannelInitializer<SocketChannel>() {
 			 @Override
 			 public void initChannel(SocketChannel ch) throws Exception {
-//				 if (protocol == Protocol.WS) {
-//					 ch.pipeline()
-//					   .addLast(new HttpClientCodec())
-//					   .addLast(new HttpObjectAggregator(8192))
-//					   //TODO: take URI parameter
-//					   .addLast(new WebsocketClientHandler(new URI("ws", null, host, port, "/websocket", null, null)));
-//				 }
+				 if (params.getProtocol() == Protocol.WS)
+					 NettyUtils.configurePipelineForWebsocketClient(ch, params);
 
 				 if (tag != null) { //TODO: share with NettyClient?
 					 ch.pipeline()
@@ -166,7 +136,7 @@ public class NettyRemoteServer implements Server {
 		 });
 
 		// Start the client.
-		b.connect(proxyHost, port); //TODO: handle errors?
+		b.connect(params.getRemoteAddress()); //TODO: handle errors?
 	}
 
 	protected void setupPipeline(SocketChannel ch) {
@@ -174,6 +144,6 @@ public class NettyRemoteServer implements Server {
 		  .addLast(new LengthFieldBasedFrameDecoder(65535, 0, 2, 0, 2))
 		  .addLast(new KryoDecoder(kryoBuilder.get()))
 		  .addLast(new KryoEncoder(kryoBuilder.get(), true))
-		  .addLast(new NettyHandler(new NettyConnection(ch), listenerFactory.apply(new NettyNewConnectionContext(ch)), connectionStateListener));
+		  .addLast(new NettyHandler(new NettyConnection(ch), params.getListenerFactory().apply(new NettyNewConnectionContext(ch)), connectionStateListener));
 	}
 }

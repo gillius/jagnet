@@ -11,14 +11,11 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LineBasedFrameDecoder;
-import io.netty.handler.codec.http.HttpClientCodec;
-import io.netty.handler.codec.http.HttpObjectAggregator;
 import org.gillius.jagnet.*;
 import org.gillius.jagnet.proxy.client.ProxyClientHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 
 public class NettyClient implements Client {
@@ -59,15 +56,8 @@ public class NettyClient implements Client {
 			 public void initChannel(SocketChannel ch) throws Exception {
 				 connection = new NettyConnection(ch);
 				 connection.getCloseFuture().thenRun(NettyClient.this::close);
-				 if (params.getProtocol() == Protocol.WS) {
-					 URI uri = new URI("ws", null,
-					                   params.getRemoteAddress().getHostString(), params.getRemoteAddress().getPort(),
-					                   params.getWebsocketPath(), null, null);
-					 ch.pipeline()
-					   .addLast(new HttpClientCodec())
-					   .addLast(new HttpObjectAggregator(8192))
-					   .addLast(new WebsocketClientHandler(uri));
-				 }
+				 if (params.getProtocol() == Protocol.WS)
+					 NettyUtils.configurePipelineForWebsocketClient(ch, params);
 
 				 if (params.isProxyMode()) {
 					 ch.pipeline()

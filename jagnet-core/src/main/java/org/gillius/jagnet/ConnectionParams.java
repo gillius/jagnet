@@ -185,6 +185,12 @@ public class ConnectionParams implements Cloneable {
 		return listenerFactory;
 	}
 
+	/**
+	 * A function that given the incoming connection context, returns a {@link ConnectionListener} to use for that
+	 * connection. Since a listener for a given connection is not called concurrently, this allows the function to return
+	 * connection-specific listener instances if they are stateful. Or, the factory could return the same value each time
+	 * if the listener is stateless or thread-safe.
+	 */
 	public ConnectionParams setListenerFactory(Function<NewConnectionContext, ConnectionListener> listenerFactory) {
 		this.listenerFactory = listenerFactory;
 		return this;
