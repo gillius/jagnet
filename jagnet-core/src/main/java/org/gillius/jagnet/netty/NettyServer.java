@@ -7,7 +7,6 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.gillius.jagnet.*;
 
@@ -87,7 +86,7 @@ public class NettyServer implements Server {
 				 }
 
 				 allChannels.add(ch);
-				 setupPipeline(ch);
+				 NettyUtils.setupPipeline(ch, kryoBuilder.get(), listenerFactory, connectionStateListener);
 			 }
 		 })
 		 .childOption(ChannelOption.TCP_NODELAY, true)
@@ -118,13 +117,5 @@ public class NettyServer implements Server {
 			group.shutdownGracefully();
 			group = null;
 		}
-	}
-
-	protected void setupPipeline(SocketChannel ch) {
-		ch.pipeline()
-		  .addLast(new LengthFieldBasedFrameDecoder(65535, 0, 2, 0, 2))
-		  .addLast(new KryoDecoder(kryoBuilder.get()))
-		  .addLast(new KryoEncoder(kryoBuilder.get(), true))
-		  .addLast(new NettyHandler(new NettyConnection(ch), listenerFactory.apply(new NettyNewConnectionContext(ch)), connectionStateListener));
 	}
 }

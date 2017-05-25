@@ -4,15 +4,11 @@ import com.esotericsoftware.kryo.Kryo;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
-import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
-import io.netty.handler.codec.LineBasedFrameDecoder;
 import org.gillius.jagnet.*;
-import org.gillius.jagnet.proxy.client.ProxyClientHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,20 +55,7 @@ public class NettyClient implements Client {
 				 if (params.getProtocol() == Protocol.WS)
 					 NettyUtils.configurePipelineForWebsocketClient(ch, params);
 
-				 if (params.isProxyMode()) {
-					 ch.pipeline()
-					   .addLast(new LineBasedFrameDecoder(512, true, true))
-					   .addLast(new ProxyClientHandler(params.getProxyTag(), ctx -> {
-						   log.info("Switching from proxy mode");
-						   ChannelPipeline p = ctx.pipeline();
-						   p.remove(LineBasedFrameDecoder.class);
-						   p.remove(ProxyClientHandler.class);
-						   setupPipeline(ch, kryo);
-						   ch.pipeline().fireChannelActive();
-					   }));
-				 } else {
-					 setupPipeline(ch, kryo);
-				 }
+				 NettyUtils.setupClientPipeline(ch, params.getProxyTag(), kryo, params, getConnectionStateListener());
 			 }
 		 });
 
@@ -88,15 +71,6 @@ public class NettyClient implements Client {
 	@Override
 	public CompletableFuture<Connection> getConnection() {
 		return connFuture;
-	}
-
-	protected void setupPipeline(SocketChannel ch, Kryo kryo) {
-		ch.pipeline()
-		  .addLast(new LengthFieldBasedFrameDecoder(65535, 0, 2, 0, 2))
-		  .addLast(new KryoDecoder(kryo))
-		  .addLast(new KryoEncoder(kryo, true))
-		  .addLast(new NettyHandler(connection, params.getListenerFactory().apply(new NettyNewConnectionContext(ch)), getConnectionStateListener()))
-		;
 	}
 
 	private ConnectionStateListener getConnectionStateListener() {
