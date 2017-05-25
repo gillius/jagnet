@@ -12,11 +12,9 @@ public class ClientExample {
 		ConditionConnectionListener listener = new ConditionConnectionListener();
 
 		ConnectionParams params = new ConnectionParams()
-				.setByURI("tcp://localhost", false)
+				.setByURI("tcp://localhost:54555", false)
+//				.setByURI("proxy+ws://localhost:56238/websocket?service:ServerExample", false)
 				.setListener(listener);
-//		client.setProxyTag("thetag");
-//		client.setPort(56238);
-//		client.setProxyTag("service:ServerExample");
 
 		NettyClient client = new NettyClient(params);
 		TimeSync sync = new TimeSync();

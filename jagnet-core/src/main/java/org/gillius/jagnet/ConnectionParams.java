@@ -113,8 +113,9 @@ public class ConnectionParams implements Cloneable {
 		return localAddress;
 	}
 
-	public void setLocalAddress(InetSocketAddress localAddress) {
+	public ConnectionParams setLocalAddress(InetSocketAddress localAddress) {
 		this.localAddress = localAddress;
+		return this;
 	}
 
 	public InetSocketAddress getRemoteAddress() {

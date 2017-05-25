@@ -17,14 +17,15 @@ public class ChatServer {
 
 	private static final Logger log = LoggerFactory.getLogger(ChatServer.class);
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		Server server = new NettyServer();
-		server.setPort(54555);
-		server.registerMessages(MESSAGE_CLASSES);
 
 		ChatRoom room = new ChatRoom();
-		server.setListenerFactory(x -> new RemoteChatClient(room));
-		server.start();
+		ConnectionParams params = new ConnectionParams()
+				.setByURI("tcp://localhost:54555", true)
+				.registerMessages(MESSAGE_CLASSES)
+				.setListenerFactory(x -> new RemoteChatClient(room));
+		server.start(params);
 
 		log.info("Server listening on port 54555");
 	}

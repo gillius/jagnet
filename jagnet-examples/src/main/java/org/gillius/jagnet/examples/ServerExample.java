@@ -9,17 +9,11 @@ public class ServerExample {
 	private static final Logger log = LoggerFactory.getLogger(ServerExample.class);
 
 	public static void main(String[] args) throws Exception {
-		Server remote = new NettyServer();
-		remote.setPort(54555);
-//		NettyClient remote = new NettyClient();
-//		remote.setHost("localhost");
-//		remote.setPort(8000);
-//		remote.setProxyTag("thetag");
+		NettyServer remote = new NettyServer();
 
-//		NettyRemoteServer remote = new NettyRemoteServer();
-//		remote.setProxyHost("localhost");
-//		remote.setServiceTag("ServerExample");
-//		remote.setPort(56238);
+		ConnectionParams params = new ConnectionParams()
+				.setByURI("tcp://localhost:54555", true);
+//				.setByURI("proxy+ws://localhost:56238/websocket?ServerExample", true);
 
 		remote.setConnectionStateListener(new ConnectionStateListener() {
 			@Override
@@ -44,8 +38,8 @@ public class ServerExample {
 
 		objectManager.registerObject(1, new ChatMessage("Server", "original"));
 
-		remote.setListener(ConnectionListenerChain.of(new StandardConnectionListener(),
+		params.setListener(ConnectionListenerChain.of(new StandardConnectionListener(),
 		                                              new ObjectManagerConnectionListener(objectManager)));
-		remote.start();
+		remote.start(params);
 	}
 }

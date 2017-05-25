@@ -238,14 +238,15 @@ public class BallAndPaddleGame extends Game {
 			if (isServer && proxyTag == null) {
 				FirstConnectionListener firstConnectionListener = new FirstConnectionListener();
 				NettyServer server = new NettyServer();
-				server.registerMessages(messages);
-				server.setPort(port);
+				ConnectionParams params = new ConnectionParams()
+						.registerMessages(messages)
+						.setProtocol(Protocol.TCP)
+						.setLocalAddress(new InetSocketAddress(port))
+						.setListener(ConnectionListenerChain.of(new StandardConnectionListener(),
+						                                        deferred));
 				server.setAcceptPolicy(new AcceptFirstPolicy());
 				server.setConnectionStateListener(firstConnectionListener);
-				server.setListener(
-						ConnectionListenerChain.of(new StandardConnectionListener(),
-						                           deferred));
-				server.start();
+				server.start(params);
 				log.info("Started server on port {}. Waiting for clients to join.", port);
 				connection = firstConnectionListener.getConnection().get();
 				server.stopAcceptingNewConnections();
