@@ -2,13 +2,14 @@ package org.gillius.jagnet.netty;
 
 import com.esotericsoftware.kryo.Kryo;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LineBasedFrameDecoder;
+import io.netty.util.concurrent.GlobalEventExecutor;
 import org.gillius.jagnet.*;
 import org.gillius.jagnet.proxy.ProxyRemoteServerHandler;
 import org.slf4j.Logger;
@@ -19,22 +20,13 @@ import java.util.concurrent.CompletableFuture;
 public class NettyRemoteServer {
 	private static final Logger log = LoggerFactory.getLogger(NettyRemoteServer.class);
 
-	private final ConnectionParams params;
+	private ConnectionParams params;
 	private ConnectionStateListener connectionStateListener = NoopConnectionListener.INSTANCE;
-	private final CompletableFuture<Object> registeredFuture = new CompletableFuture<>();
+	private final CompletableFuture<Object> listeningFuture = new CompletableFuture<>();
 
+	private ChannelGroup allChannels;
 	private EventLoopGroup group;
-
-	public NettyRemoteServer(ConnectionParams params) {
-		if (params.getListenerFactory() == null)
-			throw new IllegalArgumentException("listenerFactory not initialized");
-		if (params.getRemoteAddress() == null)
-			throw new IllegalArgumentException("remoteAddress not initialized");
-		if (params.getProxyTag() == null)
-			throw new IllegalArgumentException("proxyTag not initialized");
-
-		this.params = params.clone();
-	}
+	private Channel serverChannel;
 
 	public AcceptPolicy getAcceptPolicy() {
 		return AcceptAllPolicy.INSTANCE;
@@ -54,14 +46,38 @@ public class NettyRemoteServer {
 
 	/**
 	 * Returns a future that is completed successfully with an undefined value (possibly null) when the service is
-	 * registered and listening, or completed exceptionally when it does not.
+	 * bound and listening (local server) or registered and listening (remote proxy), or completed exceptionally if there
+	 * listening fails.
 	 */
-	public CompletableFuture<Object> getRegisteredFuture() {
-		return registeredFuture;
+	public CompletableFuture<Object> getListeningFuture() {
+		return listeningFuture;
 	}
 
-	public void start() {
-		group = new NioEventLoopGroup();
+	public void start(ConnectionParams params) {
+		if (params.getListenerFactory() == null)
+			throw new IllegalArgumentException("listenerFactory not initialized");
+		if (params.getRemoteAddress() == null)
+			throw new IllegalArgumentException("remoteAddress not initialized");
+		if (params.getProxyTag() == null)
+			throw new IllegalArgumentException("proxyTag not initialized");
+
+		this.params = params.clone();
+
+		group = new NioEventLoopGroup(1);
+		allChannels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+
+		ChannelFuture future = startRemoteListening();
+
+		serverChannel = future.channel();
+		allChannels.add(serverChannel);
+		try {
+			future.sync(); //sync to wait here for bind to complete or connect to start, so we get exception if it fails
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
+	}
+
+	public ChannelFuture startRemoteListening() {
 		Bootstrap b = new Bootstrap();
 		b.group(group)
 		 .channel(NioSocketChannel.class)
@@ -74,25 +90,28 @@ public class NettyRemoteServer {
 
 				 ch.pipeline()
 				   .addLast(new LineBasedFrameDecoder(512, true, true))
-				   .addLast(new ProxyRemoteServerHandler(params.getProxyTag(), NettyRemoteServer.this::addClient, registeredFuture));
+				   .addLast(new ProxyRemoteServerHandler(params.getProxyTag(), NettyRemoteServer.this::addClient, listeningFuture));
 			 }
 		 });
 
-		try {
-			b.connect(params.getRemoteAddress(), params.getLocalAddress()).sync();
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-		}
+		return b.connect(params.getRemoteAddress(), params.getLocalAddress());
 	}
 
 //	@Override
 	public void stopAcceptingNewConnections() {
-		throw new UnsupportedOperationException("Not yet supported"); //TODO: support
+		serverChannel.close();
 	}
 
 //	@Override
 	public void close() {
-		throw new UnsupportedOperationException("Not yet supported"); //TODO: support
+		if (allChannels != null) {
+			allChannels.close();
+			allChannels = null;
+		}
+		if (group != null) {
+			group.shutdownGracefully();
+			group = null;
+		}
 	}
 
 	private void addClient(String tag) {
