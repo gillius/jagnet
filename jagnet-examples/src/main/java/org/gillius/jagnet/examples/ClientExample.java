@@ -17,7 +17,7 @@ public class ClientExample {
 				.setByURI(getUri(args), false)
 				.setListener(listener);
 
-		NettyClient client = new NettyClient(params);
+		Client client = new NettyClient(params);
 		TimeSync sync = new TimeSync();
 
 		client.start();

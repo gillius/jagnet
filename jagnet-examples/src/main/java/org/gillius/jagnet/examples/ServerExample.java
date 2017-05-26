@@ -11,7 +11,7 @@ public class ServerExample {
 	private static final Logger log = LoggerFactory.getLogger(ServerExample.class);
 
 	public static void main(String[] args) throws Exception {
-		NettyServer remote = new NettyServer();
+		Server remote = new NettyServer();
 
 		ConnectionParams params = new ConnectionParams().setByURI(getUri(args), true);
 
