@@ -7,10 +7,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
+import static org.gillius.jagnet.examples.ExampleUtil.getUri;
+
 public class ChatClient {
 	public static void main(String[] args) throws Exception {
 		ConnectionParams params = new ConnectionParams()
-				.setByURI("tcp://localhost", false)
+				.setByURI(getUri(args), false)
 				.registerMessages(ChatServer.MESSAGE_CLASSES);
 
 		params.setListener(new TypedConnectionListener()

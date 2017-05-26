@@ -45,6 +45,9 @@ public class ConnectionParams implements Cloneable {
 	 * protocols assume a remote proxy connection and set remoteAddress. The other protocols assume a local connection
 	 * and set localAddress.
 	 * <p>
+	 * Host value "any" is treated as the wildcard "0.0.0.0" address, which is useful when setting localAddress when
+	 * server parameter is true.
+	 * <p>
 	 * If the port is not specified, it defaults to 80 for ws protocol, or 56238 for TCP proxy mode, or 54555 for TCP
 	 * not proxy mode.
 	 */
@@ -83,7 +86,10 @@ public class ConnectionParams implements Cloneable {
 			port = protocol == Protocol.TCP ? (proxyTag != null ? 56238 : 54555): 80;
 		}
 
-		InetSocketAddress addr = new InetSocketAddress(uri.getHost(), port);
+		String host = uri.getHost();
+		if ("any".equalsIgnoreCase(host))
+			host = "0.0.0.0";
+		InetSocketAddress addr = new InetSocketAddress(host, port);
 		if (server) {
 			if (proxyTag != null)
 				remoteAddress = addr;

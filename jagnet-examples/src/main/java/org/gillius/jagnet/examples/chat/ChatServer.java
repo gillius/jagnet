@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.gillius.jagnet.FilteredReceivedMessageListener.typedListener;
+import static org.gillius.jagnet.examples.ExampleUtil.getUri;
 
 public class ChatServer {
 	public static final List<Class<?>> MESSAGE_CLASSES = Arrays.asList(ChatRegistration.class, ClientChatMessage.class);
@@ -22,7 +23,7 @@ public class ChatServer {
 
 		ChatRoom room = new ChatRoom();
 		ConnectionParams params = new ConnectionParams()
-				.setByURI("tcp://localhost:54555", true)
+				.setByURI(getUri(args), true)
 				.registerMessages(MESSAGE_CLASSES)
 				.setListenerFactory(x -> new RemoteChatClient(room));
 		server.start(params);

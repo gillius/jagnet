@@ -14,7 +14,6 @@ import org.gillius.jalleg.framework.math.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetSocketAddress;
 import java.util.Random;
 
 import static java.util.Arrays.asList;
@@ -206,20 +205,12 @@ public class BallAndPaddleGame extends Game {
 
 	public static void main(String[] args) throws Exception {
 		boolean isServer = false;
-		int port = 0;
-		String host = null;
-		String proxyTag = null;
+		ConnectionParams params = new ConnectionParams();
 		try {
 			isServer = "server".equalsIgnoreCase(args[0]);
 			if (!isServer && !"client".equalsIgnoreCase(args[0]))
 				printUsageAndExit();
-			port = Integer.parseInt(args[1]);
-			if (!isServer || args.length == 4) {
-				host = args[2];
-			}
-			if (args.length == 4) {
-				proxyTag = args[3];
-			}
+			params.setByURI(args[1], isServer);
 		} catch (Exception ignored) {
 			printUsageAndExit();
 		}
@@ -229,42 +220,27 @@ public class BallAndPaddleGame extends Game {
 		DeferredConnectionListener deferred = new DeferredConnectionListener(
 				new ObjectManagerConnectionListener(objectManager)
 		);
+		params.registerMessages(messages);
+		params.setListener(ConnectionListenerChain.of(new StandardConnectionListener(),
+		                                              deferred));
 		Connection connection = null;
 		try {
 			KryoCopier copier = new KryoCopier();
 			copier.register(messages);
 			objectManager.setOnUpdateListener(m -> copier.copy(m.getMessage(), m.getRegisteredObject()));
 
-			if (isServer && proxyTag == null) {
+
+			if (isServer && !params.isProxyMode()) {
 				FirstConnectionListener firstConnectionListener = new FirstConnectionListener();
 				NettyServer server = new NettyServer();
-				ConnectionParams params = new ConnectionParams()
-						.registerMessages(messages)
-						.setProtocol(Protocol.TCP)
-						.setLocalAddress(new InetSocketAddress(port))
-						.setListener(ConnectionListenerChain.of(new StandardConnectionListener(),
-						                                        deferred));
 				server.setAcceptPolicy(new AcceptFirstPolicy());
 				server.setConnectionStateListener(firstConnectionListener);
 				server.start(params);
-				log.info("Started server on port {}. Waiting for clients to join.", port);
 				connection = firstConnectionListener.getConnection().get();
 				server.stopAcceptingNewConnections();
 				connection.getCloseFuture().thenRun(server::close);
 
 			} else {
-				ConnectionParams params = new ConnectionParams()
-						.registerMessages(messages)
-						.setRemoteAddress(new InetSocketAddress(host, port));
-				if (proxyTag != null) {
-					params.setProxyTag(proxyTag);
-					log.info("Proxy tag: {}", proxyTag);
-				}
-
-				params.setListener(
-						ConnectionListenerChain.of(new StandardConnectionListener(),
-						                           deferred));
-
 				log.info("Client connecting to {}", params.getRemoteAddress());
 				NettyClient client = new NettyClient(params);
 				client.start();
@@ -281,11 +257,11 @@ public class BallAndPaddleGame extends Game {
 	}
 
 	private static void printUsageAndExit() {
-		System.err.println("Arguments: server|client port [host] [proxytag]");
-		System.err.println("Example: server 56238");
-		System.err.println("Example: server 56238 localhost unique_tag");
-		System.err.println("Example: client 56238 localhost");
-		System.err.println("Example: client 56238 localhost unique_tag");
+		System.err.println("Arguments: server|client uri");
+		System.err.println("Example: server tcp://0.0.0.0:56238");
+		System.err.println("Example: server proxy+tcp://localhost:56238/?unique_tag");
+		System.err.println("Example: client tcp://localhost:56238");
+		System.err.println("Example: client proxy+tcp://localhost:56238/?unique_tag");
 		System.exit(1);
 	}
 }

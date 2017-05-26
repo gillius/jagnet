@@ -5,6 +5,8 @@ import org.gillius.jagnet.netty.NettyClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.gillius.jagnet.examples.ExampleUtil.getUri;
+
 public class ClientExample {
 	private static final Logger log = LoggerFactory.getLogger(ClientExample.class);
 
@@ -12,8 +14,7 @@ public class ClientExample {
 		ConditionConnectionListener listener = new ConditionConnectionListener();
 
 		ConnectionParams params = new ConnectionParams()
-				.setByURI("tcp://localhost:54555", false)
-//				.setByURI("proxy+ws://localhost:56238/websocket?service:ServerExample", false)
+				.setByURI(getUri(args), false)
 				.setListener(listener);
 
 		NettyClient client = new NettyClient(params);

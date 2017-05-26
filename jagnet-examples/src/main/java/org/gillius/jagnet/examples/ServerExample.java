@@ -5,15 +5,15 @@ import org.gillius.jagnet.netty.NettyServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.gillius.jagnet.examples.ExampleUtil.getUri;
+
 public class ServerExample {
 	private static final Logger log = LoggerFactory.getLogger(ServerExample.class);
 
 	public static void main(String[] args) throws Exception {
 		NettyServer remote = new NettyServer();
 
-		ConnectionParams params = new ConnectionParams()
-				.setByURI("tcp://localhost:54555", true);
-//				.setByURI("proxy+ws://localhost:56238/websocket?ServerExample", true);
+		ConnectionParams params = new ConnectionParams().setByURI(getUri(args), true);
 
 		remote.setConnectionStateListener(new ConnectionStateListener() {
 			@Override
