@@ -18,12 +18,14 @@ dependencies {
 	runtime 'org.slf4j:slf4j-simple:1.7.21'
 }
 
+String uri = project.findProperty("uri") ?: 'tcp://localhost:56238'
+
 task runServer(type: JavaExec) {
 	classpath = sourceSets.main.runtimeClasspath
 
 	main = mainClassName
 
-	args = ['server', '56238']
+	args = ['server', uri]
 }
 
 task runClient(type: JavaExec) {
@@ -31,5 +33,5 @@ task runClient(type: JavaExec) {
 
 	main = mainClassName
 
-	args = ['client', '56238', 'localhost']
+	args = ['client', uri]
 }
