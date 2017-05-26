@@ -15,3 +15,14 @@ dependencies {
 
 	runtime 'org.slf4j:slf4j-simple:1.7.21'
 }
+
+String port = project.findProperty("port") ?: "56238"
+boolean websocketMode = project.findProperty("ws")?.equalsIgnoreCase("true")
+
+task runProxyServer(type: JavaExec) {
+	classpath = sourceSets.main.runtimeClasspath
+
+	main = mainClassName
+
+	args = [port, websocketMode ? "websocket" : ""]
+}
